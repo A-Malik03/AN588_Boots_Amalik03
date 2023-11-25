@@ -1,0 +1,105 @@
+---
+title: "Final Homework Code"
+author: "Allister Malik"
+date: "`r Sys.Date()`"
+output: html_document
+---
+## Reflection
+This homework was pretty easy in my opinion after looking over the examples of bootstrapping in the modules. I did have some confusion of which way I should do the linear regression(is x first when you say [blank] in relation to [blank])? But I suppose it does not matter as long as I am consistent(for this HW assignment, at least). Another challenge was getting the bootstrapping to work the way I wanted it to. I was originally trying to create a dataframe by directing adding the coefficients(samplecoef <- coeff(m)) but it made a dataframe with 0 coloumns so I manually added the sampled coefficients based on the index of the loop. I didn't really have a third challenge. This challenge was fun to do! I did enjoy making the bootstrapping portion because its fun to see small code make such a large output. As always though, I am not confident I did as ask, but I did feel more confident than usual.
+
+## Post-Commentary Reflection
+
+</br>After looking at Erin's code I feel more confident that I did mine correctly. She did the bootstrapping in another way which was helpful if I ever want to try it out. They did a great job. Erin got stuck in the second portion of the HW but I hope my code helped her out. She also helped me realize to double check that the linear regression is in the same relationship as the graph. I like that we both used ggplot to graph the points and the regression, visualizing things is always nice, especially when you're typing code and getting characters and numeric outputs all the time. It's also very visually pleasing!
+
+## Part 1
+</br>Using the “KamilarAndCooperData.csv” dataset, run a linear regression looking at log(HomeRange_km2) in relation to log(Body_mass_female_mean) and report your β coeffiecients (slope and intercept).</br>
+
+First, lets load in necessary packages
+```{r load in packages}
+library(ggplot2)
+library(curl)
+library(lmodel2)
+```
+
+```{r grab data}
+KC <- curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN588_Fall23/KamilarAndCooperData.csv")
+KC <- read.csv(KC, header = TRUE, sep = ",", stringsAsFactors = FALSE)
+head(KC)#Check if its loaded in correctly
+```
+```{r, linear regression}
+#Nice! Its loaded in, now lets make the linear regression of log(HomeRange_km2) in relation to log(Body_mass_female_mean). . . seems easy enough
+KClin <- lm(log(HomeRange_km2) ~ log(Body_mass_female_mean), data = KC) #linear regression model y ~ x, homerange in realtion to body mass
+summary(KClin) #check in on our linear regression
+KClin$coefficients
+```
+</br>Based on the linear regression performed above, the β1, or slope, of the linear regression is 1.036432 and the β0, or the intercept, of the regression is -9.441231. So there is a positive relationship between HomeRangekm_2 and Body_mass_female_mean.</br>
+
+```{r plot it}
+#Lets try plotting it to better visualize the data
+x <- log(KC$Body_mass_female_mean)
+y <- log(KC$HomeRange_km2)
+#Set the two variables to a simpler name, object x and y, for my variables
+g <- ggplot(data = KC, aes(x = x, y = y)) 
+g <- g + geom_point() #scatter plot the data
+g <- g + labs(x = "Mean Female Body Mass", y = "Home Range(km2)") #label them because just having them as x and y
+g <- g + geom_smooth(method = "lm", formula = y ~ x) #add the regression line
+g #lets see it
+```
+</br>
+## Part 2
+</br>Use bootstrapping to sample from your data 1000 times with replacement, each time fitting the same model and calculating the same coefficients. This generates a sampling distribution for each β coefficient.</br>
+
+```{r bootstrapping}
+data <- data.frame(x, y) #Gives the log(body mass) and log(homerange) of dataset
+samplerows <- NULL #sampled row number dummy variable
+sampledata <- NULL #sampled data dummy
+samplecoef <- data.frame()
+n = 1000
+for (i in 1:1000) { #do this thing 1000 times
+     samplerows <- sample(nrow(data), size = n, replace = TRUE) #sample a number corresponding to a row, with replacement to get 1000 rows
+    sampledata <- data[samplerows, ] #sample dataframe of the actual values
+
+  m <- lm(y ~ x, data = sampledata) ##Now to fit it to a linear model
+  
+        
+  
+  c <- coefficients(m)
+  samplecoef[i, 1] <- c[1]
+  samplecoef[i, 2] <- c[2]
+  #I tried samplecoef <- coeff(m) but it created a dataframe with 0 columns and 1000 rows, had to do it a more rudimentary, longer way
+}
+colnames(samplecoef) <- c("β0", "β1")
+summary(samplecoef) #Let see it. . . it looks right
+```
+
+
+</br>Estimate the standard error for each of your β coefficients as the standard deviation of the sampling distribution from your bootstrap and determine the 95% CI for each of your β coefficients based on the appropriate quantiles from your sampling distribution.</br>
+```{r}
+#"Make" the population standard deviation funtion AKA copy and paste from my previous HW assignment.
+pop_sd <- function(x) {
+  sqrt(
+    sum((x - mean(x))^2)/(length(x))
+  )
+} 
+#Estimate standard errors of the coefficients
+(B0se <- pop_sd(samplecoef$β0))
+(B1se <- pop_sd(samplecoef$β1))
+
+#Calculate 95% CI's for the coefficients:
+b0ci <- quantile(samplecoef$β0, c(0.025, 0.975))
+b1ci <- quantile(samplecoef$β1, c(0.025, 0.975))
+
+b0ci
+
+b1ci
+
+```
+
+ 
+# How does the former compare to the SE estimated from your entire dataset using the formula for standard error implemented in lm()?
+
+</br>The SE estimated from the entire dataset using the formula yields a larger number when compared to the SE estimated using the SD of the sample data
+
+# How does the latter compare to the 95% CI estimated from your entire dataset?
+
+</br>The 95% CI's estimated of the entire dataset is larger than than CI of the sampled data.
